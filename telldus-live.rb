@@ -161,7 +161,6 @@ if __FILE__ == $PROGRAM_NAME
 
     puts "#{sensor.id} #{sensor.name}"
 
-    name_length = sensor.data.map{ |datum| datum['name'].length }.max
     sensor.data.each do |datum|
       printf "  %s %s\n", "#{datum['name']}:", datum['value']
     end
