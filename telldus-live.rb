@@ -162,7 +162,7 @@ if __FILE__ == $PROGRAM_NAME
     puts "#{sensor.id} #{sensor.name}"
 
     sensor.data.each do |datum|
-      printf "  %s %s\n", "#{datum['name']}:", datum['value']
+      puts "  #{datum['name']}: #{datum['value']}"
     end
 
   else
