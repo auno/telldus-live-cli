@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'date'
 require 'rubygems'
 require 'oauth'
 require 'yaml'
@@ -35,6 +36,16 @@ module TelldusLive
     def devices
       request("/devices/list")['device'].map do |device_spec|
         Device.new self, device_spec
+      end
+    end
+
+    def sensor(sensor_id)
+      Sensor.new self, request("/sensor/info", :id => sensor_id)
+    end
+
+    def sensors
+      request("/sensors/list")['sensor'].map do |sensor_spec|
+        Sensor.new self, sensor_spec
       end
     end
 
@@ -79,6 +90,29 @@ module TelldusLive
       end
     end
   end
+
+  class Sensor
+    attr_reader :id
+    attr_reader :name
+    attr_reader :last_update
+
+    def initialize(client, spec)
+      @client = client
+      @id = spec['id']
+      @name = spec['name']
+      @last_update = Time.at(spec['lastUpdated'])
+    end
+
+    def data
+      @data ||= retrieve_data
+    end
+
+    private
+
+    def retrieve_data
+      @client.request("/sensor/info", :id => @id)['data']
+    end
+  end
 end
 
 if __FILE__ == $PROGRAM_NAME
@@ -115,6 +149,23 @@ if __FILE__ == $PROGRAM_NAME
       raise "This shouldn't happen"
     end
         
+  when "sensors"
+    client = TelldusLive::Client.new(auth)
+    client.sensors.each do |sensor|
+      puts "#{sensor.id} #{sensor.name}"
+    end
+
+  when "sensor"
+    client = TelldusLive::Client.new(auth)
+    sensor = client.sensor(ARGV.shift)
+
+    puts "#{sensor.id} #{sensor.name}"
+
+    name_length = sensor.data.map{ |datum| datum['name'].length }.max
+    sensor.data.each do |datum|
+      printf "  %s %s\n", "#{datum['name']}:", datum['value']
+    end
+
   else
     puts "Usage:"
     puts "  #{$PROGRAM_NAME} command [argument]..."
