@@ -100,6 +100,7 @@ module TelldusLive
       @client = client
       @id = spec['id']
       @name = spec['name']
+      @data = spec['data']
       @last_update = Time.at(spec['lastUpdated'])
     end
 
