@@ -30,22 +30,22 @@ module TelldusLive
     end
 
     def device(device_id)
-      Device.new self, request("/device/info", :id => device_id)
+      Device.new self, device_id
     end
 
     def devices
-      request("/devices/list")['device'].map do |device_spec|
-        Device.new self, device_spec
+      request("/devices/list")['device'].map do |device_info|
+        Device.new self, device_info
       end
     end
 
     def sensor(sensor_id)
-      Sensor.new self, request("/sensor/info", :id => sensor_id)
+      Sensor.new self, sensor_id
     end
 
     def sensors
-      request("/sensors/list")['sensor'].map do |sensor_spec|
-        Sensor.new self, sensor_spec
+      request("/sensors/list")['sensor'].map do |sensor_info|
+        Sensor.new self, sensor_info
       end
     end
 
@@ -66,14 +66,27 @@ module TelldusLive
 
   class Device
     attr_reader :id
-    attr_reader :name
-    attr_reader :level
 
-    def initialize(client, spec)
+    def initialize(client, id_or_info)
       @client = client
-      @id = spec['id']
-      @name = spec['name']
-      @level = ((spec['statevalue'].to_i / 255.0) * 100).floor
+
+      case id_or_info
+      when Integer
+        @id = id_or_info
+      when Hash
+        @info = id_or_info
+        @id = @info['id']
+      else
+        raise "Device.initialize expects either an Integer or a Hash as its second argument, got: #{id_or_info.class}"
+      end
+    end
+
+    def name
+      info['name']
+    end
+
+    def level
+      @level ||= ((info['statevalue'].to_i / 255.0) * 100).floor
     end
 
     def level=(value)
@@ -86,32 +99,67 @@ module TelldusLive
       if response['status'] == "success"
         @level = value
       else
-        puts %[Level change on "#{@name}" did not succeed]
+        puts %[Level change on "#{id}" did not succeed]
       end
+    end
+
+    private
+
+    def info
+      @info ||= @client.request("/device/info", :id => id)
     end
   end
 
   class Sensor
     attr_reader :id
-    attr_reader :name
-    attr_reader :last_update
 
-    def initialize(client, spec)
+    def initialize(client, id_or_info)
       @client = client
-      @id = spec['id']
-      @name = spec['name']
-      @data = spec['data']
-      @last_update = Time.at(spec['lastUpdated'])
+
+      case id_or_info
+      when Integer
+        @id = id_or_info
+      when Hash
+        @info = id_or_info
+        @id = @info['id']
+      else
+        raise "Sensor.initialize expects either an Integer or a Hash as its second argument, got: #{id_or_info.class}"
+      end
+    end
+
+    def name
+      info['name']
+    end
+
+    def last_update
+      Time.at(info['lastUpdated'])
     end
 
     def data
-      @data ||= retrieve_data
+      info['data'] ||= retrieve_data
+    end
+
+    def to_s
+      s = "#{id} #{name}\n"
+      data.each do |datum|
+        s += "  #{datum['name']}: #{datum['value']}\n"
+      end
+
+      s
     end
 
     private
 
+    def info
+      @info ||= retrieve_info
+    end
+
+    def retrieve_info
+      @client.request "/sensor/info", :id => id
+    end
+
     def retrieve_data
-      @client.request("/sensor/info", :id => @id)['data']
+      @client.request("/sensor/info", :id => id)['data']
     end
   end
 end
@@ -131,7 +179,7 @@ if __FILE__ == $PROGRAM_NAME
     raise "Not enough arguments. Expected 2 arguments." if ARGV.length < 2
 
     client = TelldusLive::Client.new(auth)
-    device = client.device(ARGV.shift)
+    device = client.device(ARGV.shift.to_i)
     level = ARGV.shift
 
     raise "Could not parse new level: #{level}" unless level.match(/^([+-]?)(\d+)$/)
@@ -157,14 +205,11 @@ if __FILE__ == $PROGRAM_NAME
     end
 
   when "sensor"
+    raise "Not enough arguments. Expected 1 arguments." if ARGV.length < 1
+
     client = TelldusLive::Client.new(auth)
-    sensor = client.sensor(ARGV.shift)
-
-    puts "#{sensor.id} #{sensor.name}"
-
-    sensor.data.each do |datum|
-      puts "  #{datum['name']}: #{datum['value']}"
-    end
+    sensor = client.sensor(ARGV.shift.to_i)
+    puts sensor
 
   else
     puts "Usage:"
