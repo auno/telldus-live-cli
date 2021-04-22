@@ -2,14 +2,14 @@ GEM
   remote: https://rubygems.org/
   specs:
     json (2.3.0)
-    oauth (0.5.4)
+    oauth (0.5.5)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   json (~> 2.3.0)
-  oauth (~> 0.5.4)
+  oauth (~> 0.5.5)
 
 BUNDLED WITH
    2.1.4
