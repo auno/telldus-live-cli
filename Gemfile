@@ -1,3 +1,3 @@
 source "https://rubygems.org"
-gem "oauth", "~> 0.5.4"
+gem "oauth", "~> 0.5.5"
 gem "json", "~> 2.3.0"
